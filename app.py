@@ -4,10 +4,11 @@ import streamlit as st
 st.title("SACHIN AATA CHHAKI")
 
 menu = st.selectbox("Kaunsa kaam?", [
-    "Gehun kharidna",
-    "Aata bechna",
-    "Sarso kharidna",
-    "Oil bechna",
+    "गेहू खरीदा ",
+    "आटा pisai ",
+    "आटा सैल ",  
+    "sarso तेल सैल ",
+    "sars pisai",
     "Pisai / Oil Charge (₹60 per kg)"
 ])
 
