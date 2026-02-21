@@ -1,7 +1,7 @@
 
 import streamlit as st
 
-st.title("DUKAAN MANAGEMENT SOFTWARE")
+st.title("SACHIN AATA CHHAKI")
 
 menu = st.selectbox("Kaunsa kaam?", [
     "Gehun kharidna",
