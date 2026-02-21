@@ -9,8 +9,7 @@ menu = st.selectbox("Kaunsa kaam?", [
     "आटा सैल ",  
     "sarso तेल सैल ",
     "sars pisai",
-    "Pisai / Oil Charge (₹60 per kg)"
-])
+    "sarso खरीद ",])
 
 qty = st.number_input("Quantity (kg)", min_value=0.0)
 rate = st.number_input("Rate per kg", min_value=0.0)
