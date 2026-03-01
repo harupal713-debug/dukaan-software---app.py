@@ -16,7 +16,7 @@ rate = st.number_input("Rate per kg", min_value=0)
 
 # Auto calculation
 if "पिसाई" in menu:
-    total = qty * पिसाई
+    total = qty * 60
 else:
     total = qty * rate
 
