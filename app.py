@@ -22,10 +22,18 @@ if qty != "" and rate != "":
         total = float(qty) * float(rate)
         total = round(total, 2)
 
+        formatted_total = f"{total:,.2f}"
+
         if "खरीद" in menu:
-            st.error(f"देना है: ₹{total}")
+            st.markdown(
+                f"<h2 style='color:red;'>देना है: ₹ {formatted_total}</h2>",
+                unsafe_allow_html=True
+            )
         else:
-            st.success(f"लेना है: ₹{total}")
+            st.markdown(
+                f"<h2 style='color:green;'>लेना है: ₹ {formatted_total}</h2>",
+                unsafe_allow_html=True
+            )
 
     except:
         st.error("सही नंबर लिखें")
