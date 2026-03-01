@@ -7,6 +7,13 @@ st.title("SACHIN AATA CHHAKI - DUKAAN MANAGEMENT")
 
 file_name = "dukaan_data.csv"
 
+# ===== SAFE FLOAT FUNCTION =====
+def to_float(value):
+    try:
+        return float(value)
+    except:
+        return None
+
 # ===== MENU =====
 menu = st.selectbox("Kaunsa kaam?", [
     "गेहू खरीदा",
@@ -31,78 +38,67 @@ payment_mode = st.selectbox("Payment Mode", [
 qty = st.text_input("Quantity (kg)", placeholder="कितना वजन")
 rate = st.text_input("Rate per kg", placeholder="कितने रु")
 
+qty_float = to_float(qty)
+rate_float = to_float(rate)
+
 # ===== LIVE CALCULATION =====
-if qty != "" and rate != "":
-    try:
-        qty_float = float(qty)
-        rate_float = float(rate)
-        total = round(qty_float * rate_float, 2)
+if qty_float is not None and rate_float is not None:
+    total = round(qty_float * rate_float, 2)
 
-        if "खरीद" in menu:
-            st.markdown(f"<h2 style='color:red;'>देना है: ₹ {total:,.2f}</h2>", unsafe_allow_html=True)
-        else:
-            st.markdown(f"<h2 style='color:green;'>लेना है: ₹ {total:,.2f}</h2>", unsafe_allow_html=True)
+    if "खरीद" in menu:
+        st.markdown(f"<h2 style='color:red;'>देना है: ₹ {total:,.2f}</h2>", unsafe_allow_html=True)
+    else:
+        st.markdown(f"<h2 style='color:green;'>लेना है: ₹ {total:,.2f}</h2>", unsafe_allow_html=True)
 
-    except:
-        st.error("सही नंबर लिखें")
+elif qty != "" or rate != "":
+    st.warning("सही नंबर लिखें")
 
 # ===== SAVE ENTRY =====
 if st.button("Save Entry"):
 
-    if qty == "" or rate == "":
-        st.warning("Quantity aur Rate bhare bina save nahi hoga")
+    if qty_float is None or rate_float is None:
+        st.error("Quantity aur Rate sahi number me likho")
     else:
-        try:
-            qty_float = float(qty)
-            rate_float = float(rate)
-            total = round(qty_float * rate_float, 2)
+        total = round(qty_float * rate_float, 2)
 
-            if "खरीद" in menu:
-                entry_type = "Dena"
-                signed_total = -total
-            else:
-                entry_type = "Lena"
-                signed_total = total
+        if "खरीद" in menu:
+            entry_type = "Dena"
+            signed_total = -total
+        else:
+            entry_type = "Lena"
+            signed_total = total
 
-            today = datetime.now().strftime("%d-%m-%Y")
+        today = datetime.now().strftime("%d-%m-%Y")
 
-            new_entry = pd.DataFrame([{
-                "Date": today,
-                "Item": menu,
-                "Qty": qty_float,
-                "Rate": rate_float,
-                "Payment": payment_mode,
-                "Type": entry_type,
-                "Total": signed_total
-            }])
+        new_entry = pd.DataFrame([{
+            "Date": today,
+            "Item": menu,
+            "Qty": qty_float,
+            "Rate": rate_float,
+            "Payment": payment_mode,
+            "Type": entry_type,
+            "Total": signed_total
+        }])
 
-            if os.path.exists(file_name):
-                new_entry.to_csv(file_name, mode="a", header=False, index=False)
-            else:
-                new_entry.to_csv(file_name, index=False)
+        if os.path.exists(file_name):
+            new_entry.to_csv(file_name, mode="a", header=False, index=False)
+        else:
+            new_entry.to_csv(file_name, index=False)
 
-            st.success("Entry Saved Successfully!")
-            st.rerun()
-
-        except:
-            st.error("Number sahi likho")
+        st.success("Entry Saved Successfully!")
+        st.rerun()
 
 # ===== LOAD DATA =====
 if os.path.exists(file_name):
 
     df = pd.read_csv(file_name)
 
-    # ===== COLUMN SAFETY FIX =====
-    if "Payment" not in df.columns:
-        df["Payment"] = "Cash"
+    # COLUMN SAFETY
+    required_cols = ["Date","Item","Qty","Rate","Payment","Type","Total"]
+    for col in required_cols:
+        if col not in df.columns:
+            df[col] = ""
 
-    if "Type" not in df.columns:
-        df["Type"] = ""
-
-    if "Total" not in df.columns:
-        df["Total"] = 0
-
-    # ===== DATE SAFE CONVERSION =====
     df["Date"] = pd.to_datetime(df["Date"], errors="coerce")
     df = df.dropna(subset=["Date"])
 
@@ -121,7 +117,7 @@ if os.path.exists(file_name):
             st.success("Entry Deleted Successfully!")
             st.rerun()
 
-    # ===== FILTER SECTION =====
+    # ===== FILTER =====
     st.subheader("Filter Data")
 
     day_filter = st.date_input("Select Date")
@@ -145,7 +141,7 @@ if os.path.exists(file_name):
     # ===== SUMMARY =====
     st.subheader("Summary")
 
-    total_qty = filtered_df["Qty"].sum()
+    total_qty = filtered_df["Qty"].astype(float).sum()
     total_lena = filtered_df[filtered_df["Total"] > 0]["Total"].sum()
     total_dena = filtered_df[filtered_df["Total"] < 0]["Total"].sum()
     net_balance = filtered_df["Total"].sum()
@@ -155,21 +151,15 @@ if os.path.exists(file_name):
     st.write("Total Dena: ₹", round(abs(total_dena),2))
     st.write("Net Balance: ₹", round(net_balance,2))
 
-    # ===== ITEM WISE SUMMARY =====
+    # ITEM SUMMARY
     st.subheader("Item Wise Summary")
-    item_summary = filtered_df.groupby("Item")["Total"].sum().reset_index()
-    st.dataframe(item_summary)
+    st.dataframe(filtered_df.groupby("Item")["Total"].sum().reset_index())
 
-    # ===== PAYMENT SUMMARY =====
+    # PAYMENT SUMMARY
     st.subheader("Payment Mode Summary")
+    st.dataframe(filtered_df.groupby("Payment")["Total"].sum().reset_index())
 
-    if "Payment" in filtered_df.columns:
-        payment_summary = filtered_df.groupby("Payment")["Total"].sum().reset_index()
-        st.dataframe(payment_summary)
-    else:
-        st.info("Payment data available nahi hai")
-
-    # ===== DOWNLOAD BUTTON =====
+    # DOWNLOAD
     st.download_button(
         label="Download Excel",
         data=filtered_df.to_csv(index=False),
