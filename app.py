@@ -20,6 +20,13 @@ menu = st.selectbox("Kaunsa kaam?", [
     "चावल बेचा",
 ])
 
+# ===== PAYMENT MODE =====
+payment_mode = st.selectbox("Payment Mode", [
+    "Cash",
+    "Online",
+    "Udhar"
+])
+
 # ===== INPUT =====
 qty = st.text_input("Quantity (kg)", placeholder="कितना वजन")
 rate = st.text_input("Rate per kg", placeholder="कितने रु")
@@ -70,6 +77,7 @@ if st.button("Save Entry") and qty != "" and rate != "":
             "Item": menu,
             "Qty": qty_float,
             "Rate": rate_float,
+            "Payment": payment_mode,
             "Type": entry_type,
             "Total": signed_total
         }])
@@ -91,6 +99,18 @@ if os.path.exists(file_name):
 
     st.subheader("All Entries")
     st.dataframe(df)
+
+    # ===== DELETE ENTRY =====
+    st.subheader("Delete Entry")
+
+    if len(df) > 0:
+        delete_index = st.number_input("Row Number to Delete", min_value=0, max_value=len(df)-1, step=1)
+
+        if st.button("Delete Selected Entry"):
+            df = df.drop(delete_index)
+            df.to_csv(file_name, index=False)
+            st.success("Entry Deleted Successfully!")
+            st.experimental_rerun()
 
     # ===== FILTER SECTION =====
     st.subheader("Filter Data")
@@ -132,6 +152,11 @@ if os.path.exists(file_name):
     st.subheader("Item Wise Summary")
     item_summary = filtered_df.groupby("Item")["Total"].sum().reset_index()
     st.dataframe(item_summary)
+
+    # ===== PAYMENT SUMMARY =====
+    st.subheader("Payment Mode Summary")
+    payment_summary = filtered_df.groupby("Payment")["Total"].sum().reset_index()
+    st.dataframe(payment_summary)
 
     # ===== DOWNLOAD BUTTON =====
     st.download_button(
