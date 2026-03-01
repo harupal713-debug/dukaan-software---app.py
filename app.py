@@ -22,7 +22,7 @@ if os.path.exists(file_name):
 else:
     df = pd.DataFrame(columns=["Date","Item","Qty","Rate","Payment","Type","Total"])
 
-# ---------- Entry Section ----------
+# ---------- ENTRY SECTION ----------
 st.markdown("## ➕ New Entry")
 
 col1, col2, col3 = st.columns(3)
@@ -51,32 +51,23 @@ rate = st.text_input("Rate per kg")
 qty_float = to_float(qty)
 rate_float = to_float(rate)
 
-# ---------- Live Total ----------
-if qty_float is not None and rate_float is not None:
-    total = round(qty_float * rate_float,2)
+if qty_float and rate_float:
+    total_preview = round(qty_float * rate_float,2)
+    color = "red" if "खरीद" in menu else "green"
+    text = "देना है" if "खरीद" in menu else "लेना है"
+    st.markdown(f"<h3 style='color:{color};'>{text}: ₹ {total_preview:,.2f}</h3>", unsafe_allow_html=True)
 
-    if "खरीद" in menu:
-        st.markdown(f"<h3 style='color:red;'>देना है: ₹ {total:,.2f}</h3>", unsafe_allow_html=True)
-    else:
-        st.markdown(f"<h3 style='color:green;'>लेना है: ₹ {total:,.2f}</h3>", unsafe_allow_html=True)
-
-# ---------- Save ----------
+# ---------- SAVE ----------
 if st.button("💾 Save Entry", use_container_width=True):
-
     if qty_float is None or rate_float is None:
         st.error("❌ Quantity aur Rate sahi number me likho")
     else:
         total = round(qty_float * rate_float,2)
-
-        if "खरीद" in menu:
-            entry_type = "Purchase"
-            signed_total = -total
-        else:
-            entry_type = "Sale"
-            signed_total = total
+        signed_total = -total if "खरीद" in menu else total
+        entry_type = "Purchase" if "खरीद" in menu else "Sale"
 
         new_row = {
-            "Date": datetime.now().strftime("%d-%m-%Y"),
+            "Date": datetime.now().strftime("%Y-%m-%d"),
             "Item": menu,
             "Qty": qty_float,
             "Rate": rate_float,
@@ -87,61 +78,119 @@ if st.button("💾 Save Entry", use_container_width=True):
 
         df = pd.concat([df, pd.DataFrame([new_row])], ignore_index=True)
         df.to_csv(file_name,index=False)
-
-        st.success("✅ Entry Saved Successfully")
+        st.success("✅ Entry Saved")
         st.rerun()
 
-# ---------- Show Data ----------
+# ---------- PROCESS DATA ----------
 if not df.empty:
 
-    df["Date"] = pd.to_datetime(df["Date"], errors="coerce")
-    df["Qty"] = pd.to_numeric(df["Qty"], errors="coerce")
-    df["Total"] = pd.to_numeric(df["Total"], errors="coerce")
+    df["Date"] = pd.to_datetime(df["Date"])
+    df["Qty"] = pd.to_numeric(df["Qty"])
+    df["Total"] = pd.to_numeric(df["Total"])
 
+    st.markdown("---")
+    st.markdown("## 🔍 Filter Summary")
+
+    filter_type = st.selectbox("Select Period", ["All","Day","Month","Year"])
+
+    filtered_df = df.copy()
+
+    if filter_type == "Day":
+        selected_day = st.date_input("Select Day")
+        filtered_df = df[df["Date"].dt.date == selected_day]
+
+    elif filter_type == "Month":
+        selected_month = st.selectbox("Select Month", range(1,13))
+        selected_year = st.selectbox("Select Year", df["Date"].dt.year.unique())
+        filtered_df = df[
+            (df["Date"].dt.month == selected_month) &
+            (df["Date"].dt.year == selected_year)
+        ]
+
+    elif filter_type == "Year":
+        selected_year = st.selectbox("Select Year", df["Date"].dt.year.unique())
+        filtered_df = df[df["Date"].dt.year == selected_year]
+
+    # ---------- ITEM WISE SUMMARY ----------
+    st.markdown("### 📦 Item Wise Summary")
+
+    item_summary = filtered_df.groupby("Item").agg({
+        "Qty":"sum",
+        "Total":"sum"
+    }).reset_index()
+
+    st.dataframe(item_summary, use_container_width=True)
+
+    # ---------- OVERALL SUMMARY ----------
+    st.markdown("### 📊 Summary")
+
+    total_sale = filtered_df[filtered_df["Total"] > 0]["Total"].sum()
+    total_purchase = abs(filtered_df[filtered_df["Total"] < 0]["Total"].sum())
+    net = filtered_df["Total"].sum()
+
+    c1, c2, c3 = st.columns(3)
+    c1.metric("Total Sale", f"₹ {total_sale:,.2f}")
+    c2.metric("Total Purchase", f"₹ {total_purchase:,.2f}")
+    c3.metric("Net Balance", f"₹ {net:,.2f}")
+
+    # ---------- ALL ENTRIES ----------
     st.markdown("---")
     st.markdown("## 📋 All Entries")
 
     for index, row in df.iterrows():
 
-        col1, col2 = st.columns([8,2])
+        col1, col2, col3 = st.columns([6,1,1])
 
         with col1:
             color = "green" if row["Total"] > 0 else "red"
             st.markdown(
-                f"""
-                <div style="padding:10px; border-radius:10px; background-color:#f5f5f5; margin-bottom:8px;">
-                <b>{row['Date'].date()}</b> | {row['Item']} | {row['Payment']} |
-                <span style='color:{color}; font-weight:bold;'>₹ {row['Total']:,.2f}</span>
-                </div>
-                """,
+                f"<b>{row['Date'].date()}</b> | {row['Item']} | ₹ <span style='color:{color};'>{row['Total']:,.2f}</span>",
                 unsafe_allow_html=True
             )
 
+        # EDIT
         with col2:
+            if st.button("✏️", key=f"edit{index}"):
+                st.session_state["edit_index"] = index
+
+        # DELETE
+        with col3:
             if st.button("❌", key=f"del{index}"):
                 df = df.drop(index).reset_index(drop=True)
                 df.to_csv(file_name,index=False)
                 st.rerun()
 
-    # ---------- Summary ----------
-    st.markdown("---")
-    st.markdown("## 📊 Summary")
+    # ---------- EDIT MODE ----------
+    if "edit_index" in st.session_state:
 
-    total_sale = df[df["Total"] > 0]["Total"].sum()
-    total_purchase = abs(df[df["Total"] < 0]["Total"].sum())
-    net = df["Total"].sum()
+        st.markdown("---")
+        st.markdown("## ✏️ Edit Entry")
 
-    c1, c2, c3 = st.columns(3)
+        edit_i = st.session_state["edit_index"]
+        edit_row = df.loc[edit_i]
 
-    c1.metric("Total Sale", f"₹ {total_sale:,.2f}")
-    c2.metric("Total Purchase", f"₹ {total_purchase:,.2f}")
-    c3.metric("Net Balance", f"₹ {net:,.2f}")
+        new_qty = st.number_input("Quantity", value=float(edit_row["Qty"]))
+        new_rate = st.number_input("Rate", value=float(edit_row["Rate"]))
 
-    # ---------- Download ----------
+        if st.button("Update Entry"):
+            new_total = new_qty * new_rate
+            if edit_row["Type"] == "Purchase":
+                new_total = -new_total
+
+            df.at[edit_i,"Qty"] = new_qty
+            df.at[edit_i,"Rate"] = new_rate
+            df.at[edit_i,"Total"] = new_total
+
+            df.to_csv(file_name,index=False)
+            del st.session_state["edit_index"]
+            st.success("✅ Updated Successfully")
+            st.rerun()
+
+    # ---------- DOWNLOAD ----------
     st.download_button(
-        "⬇ Download Excel",
-        df.to_csv(index=False),
-        "dukaan_report.csv",
+        "⬇ Download Filtered Report",
+        filtered_df.to_csv(index=False),
+        "filtered_report.csv",
         "text/csv",
         use_container_width=True
     )
