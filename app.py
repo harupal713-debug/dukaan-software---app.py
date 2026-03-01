@@ -22,4 +22,4 @@ else:
 if "खरीद" in menu or "kharid" in menu:
     st.error(f"Dena hai: ₹{total}")
 else:
-    st.success(f"Lena hai: ₹{total}")
+    st.success(f"लेना है/देना है : ₹{total}")
