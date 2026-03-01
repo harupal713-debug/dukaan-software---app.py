@@ -28,11 +28,7 @@ menu = st.selectbox("Kaunsa kaam?", [
 ])
 
 # ===== PAYMENT MODE =====
-payment_mode = st.selectbox("Payment Mode", [
-    "Cash",
-    "Online",
-    "Udhar"
-])
+payment_mode = st.selectbox("Payment Mode", ["Cash", "Online", "Udhar"])
 
 # ===== INPUT =====
 qty = st.text_input("Quantity (kg)")
@@ -41,22 +37,23 @@ rate = st.text_input("Rate per kg")
 qty_float = to_float(qty)
 rate_float = to_float(rate)
 
-# ===== LIVE TOTAL =====
+# ===== LIVE CALCULATION =====
 if qty_float is not None and rate_float is not None:
     total = round(qty_float * rate_float, 2)
 
     if "खरीद" in menu:
-        st.markdown(f"<h3 style='color:red;'>देना है: ₹ {total}</h3>", unsafe_allow_html=True)
+        st.markdown(f"<h3 style='color:red;'>देना है: ₹ {total:,.2f}</h3>", unsafe_allow_html=True)
     else:
-        st.markdown(f"<h3 style='color:green;'>लेना है: ₹ {total}</h3>", unsafe_allow_html=True)
+        st.markdown(f"<h3 style='color:green;'>लेना है: ₹ {total:,.2f}</h3>", unsafe_allow_html=True)
 
-# ===== SAVE BUTTON =====
+elif qty != "" or rate != "":
+    st.warning("सही नंबर लिखें")
+
+# ===== SAVE ENTRY =====
 if st.button("Save Entry"):
 
-    st.write("Button Clicked ✅")   # Debug line
-
     if qty_float is None or rate_float is None:
-        st.error("❌ Quantity aur Rate sahi number me likho")
+        st.error("Quantity aur Rate sahi number me likho")
     else:
 
         total = round(qty_float * rate_float, 2)
@@ -80,7 +77,7 @@ if st.button("Save Entry"):
             "Total": signed_total
         }])
 
-        # Force proper columns
+        # Proper column order
         columns = ["Date","Item","Qty","Rate","Payment","Type","Total"]
         new_entry = new_entry[columns]
 
@@ -90,13 +87,90 @@ if st.button("Save Entry"):
             else:
                 new_entry.to_csv(file_name, index=False)
 
-            st.success("✅ Entry Saved Successfully!")
+            st.success("Entry Saved Successfully!")
 
         except Exception as e:
-            st.error(f"Save error: {e}")
+            st.error(f"Save Error: {e}")
 
-# ===== SHOW DATA =====
+# ===== LOAD DATA =====
 if os.path.exists(file_name):
+
     df = pd.read_csv(file_name)
+
+    # ===== COLUMN SAFETY =====
+    required_cols = ["Date","Item","Qty","Rate","Payment","Type","Total"]
+    for col in required_cols:
+        if col not in df.columns:
+            df[col] = ""
+
+    # ===== TYPE SAFETY =====
+    df["Qty"] = pd.to_numeric(df["Qty"], errors="coerce").fillna(0)
+    df["Rate"] = pd.to_numeric(df["Rate"], errors="coerce").fillna(0)
+    df["Total"] = pd.to_numeric(df["Total"], errors="coerce").fillna(0)
+
+    df["Date"] = pd.to_datetime(df["Date"], errors="coerce")
+    df = df.dropna(subset=["Date"])
+
     st.subheader("All Entries")
     st.dataframe(df)
+
+    # ===== DELETE ENTRY =====
+    st.subheader("Delete Entry")
+
+    if len(df) > 0:
+        delete_index = st.number_input("Row Number to Delete", 0, len(df)-1)
+
+        if st.button("Delete Selected Entry"):
+            df = df.drop(delete_index).reset_index(drop=True)
+            df.to_csv(file_name, index=False)
+            st.success("Entry Deleted Successfully!")
+
+    # ===== FILTER =====
+    st.subheader("Filter Data")
+
+    day_filter = st.date_input("Select Date", value=None)
+    month_filter = st.selectbox("Select Month", ["All"] + list(range(1,13)))
+    year_filter = st.selectbox("Select Year", ["All"] + sorted(df["Date"].dt.year.unique()))
+
+    filtered_df = df.copy()
+
+    if day_filter:
+        filtered_df = filtered_df[filtered_df["Date"].dt.date == day_filter]
+
+    if month_filter != "All":
+        filtered_df = filtered_df[filtered_df["Date"].dt.month == month_filter]
+
+    if year_filter != "All":
+        filtered_df = filtered_df[filtered_df["Date"].dt.year == year_filter]
+
+    st.subheader("Filtered Result")
+    st.dataframe(filtered_df)
+
+    # ===== SUMMARY =====
+    st.subheader("Summary")
+
+    total_qty = filtered_df["Qty"].sum()
+    total_lena = filtered_df[filtered_df["Total"] > 0]["Total"].sum()
+    total_dena = filtered_df[filtered_df["Total"] < 0]["Total"].sum()
+    net_balance = filtered_df["Total"].sum()
+
+    st.write("Total Quantity:", round(total_qty,2))
+    st.write("Total Lena: ₹", round(total_lena,2))
+    st.write("Total Dena: ₹", round(abs(total_dena),2))
+    st.write("Net Balance: ₹", round(net_balance,2))
+
+    # ===== ITEM SUMMARY =====
+    st.subheader("Item Wise Summary")
+    st.dataframe(filtered_df.groupby("Item")["Total"].sum().reset_index())
+
+    # ===== PAYMENT SUMMARY =====
+    st.subheader("Payment Mode Summary")
+    st.dataframe(filtered_df.groupby("Payment")["Total"].sum().reset_index())
+
+    # ===== DOWNLOAD =====
+    st.download_button(
+        "Download Excel",
+        filtered_df.to_csv(index=False),
+        "dukaan_filtered_data.csv",
+        "text/csv"
+    )
