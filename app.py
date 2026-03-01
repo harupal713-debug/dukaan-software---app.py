@@ -3,56 +3,68 @@ import pandas as pd
 import os
 from datetime import datetime
 
-st.title("SACHIN AATA CHHAKI - SMART MANAGEMENT")
+st.set_page_config(page_title="SACHIN AATA CHHAKI", layout="wide")
+
+st.markdown("<h1 style='text-align:center;'>🛒 SACHIN AATA CHHAKI</h1>", unsafe_allow_html=True)
 
 file_name = "dukaan_data.csv"
 
-# ========= SAFE FLOAT =========
+# ---------- Safe Float ----------
 def to_float(val):
     try:
         return float(val)
     except:
         return None
 
-# ========= LOAD DATA =========
+# ---------- Load Data ----------
 if os.path.exists(file_name):
     df = pd.read_csv(file_name)
 else:
     df = pd.DataFrame(columns=["Date","Item","Qty","Rate","Payment","Type","Total"])
 
-# ========= MENU =========
-menu = st.selectbox("Kaunsa kaam?", [
-    "गेहू खरीदा",
-    "आटा पिसाई",
-    "आटा बेचा",
-    "सरसों तेल बेचा",
-    "सरसों पिसाई",
-    "सरसों खरीदी",
-    "चावल खरीदा",
-    "सरसों खल बेची",
-    "चावल बेचा",
-])
+# ---------- Entry Section ----------
+st.markdown("## ➕ New Entry")
 
-payment_mode = st.selectbox("Payment Mode", ["Cash","Online","Udhar"])
+col1, col2, col3 = st.columns(3)
 
-qty = st.text_input("Quantity (kg)")
+with col1:
+    menu = st.selectbox("Item", [
+        "गेहू खरीदा",
+        "आटा पिसाई",
+        "आटा बेचा",
+        "सरसों तेल बेचा",
+        "सरसों पिसाई",
+        "सरसों खरीदी",
+        "चावल खरीदा",
+        "सरसों खल बेची",
+        "चावल बेचा",
+    ])
+
+with col2:
+    payment_mode = st.selectbox("Payment", ["Cash","Online","Udhar"])
+
+with col3:
+    qty = st.text_input("Quantity (kg)")
+
 rate = st.text_input("Rate per kg")
 
 qty_float = to_float(qty)
 rate_float = to_float(rate)
 
-# ========= LIVE TOTAL =========
+# ---------- Live Total ----------
 if qty_float is not None and rate_float is not None:
     total = round(qty_float * rate_float,2)
-    if "खरीद" in menu:
-        st.markdown(f"### 🔴 देना है: ₹ {total:,.2f}")
-    else:
-        st.markdown(f"### 🟢 लेना है: ₹ {total:,.2f}")
 
-# ========= SAVE =========
-if st.button("Save Entry"):
+    if "खरीद" in menu:
+        st.markdown(f"<h3 style='color:red;'>देना है: ₹ {total:,.2f}</h3>", unsafe_allow_html=True)
+    else:
+        st.markdown(f"<h3 style='color:green;'>लेना है: ₹ {total:,.2f}</h3>", unsafe_allow_html=True)
+
+# ---------- Save ----------
+if st.button("💾 Save Entry", use_container_width=True):
+
     if qty_float is None or rate_float is None:
-        st.error("Number sahi likho")
+        st.error("❌ Quantity aur Rate sahi number me likho")
     else:
         total = round(qty_float * rate_float,2)
 
@@ -75,103 +87,61 @@ if st.button("Save Entry"):
 
         df = pd.concat([df, pd.DataFrame([new_row])], ignore_index=True)
         df.to_csv(file_name,index=False)
-        st.success("Entry Saved ✅")
+
+        st.success("✅ Entry Saved Successfully")
         st.rerun()
 
-# ========= FORMAT =========
+# ---------- Show Data ----------
 if not df.empty:
+
     df["Date"] = pd.to_datetime(df["Date"], errors="coerce")
     df["Qty"] = pd.to_numeric(df["Qty"], errors="coerce")
     df["Total"] = pd.to_numeric(df["Total"], errors="coerce")
 
-# ========= FILTER =========
-st.subheader("Filter Section")
+    st.markdown("---")
+    st.markdown("## 📋 All Entries")
 
-if not df.empty:
+    for index, row in df.iterrows():
 
-    day = st.date_input("Select Date", value=None)
-    month = st.selectbox("Month", ["All"] + list(range(1,13)))
-    year = st.selectbox("Year", ["All"] + sorted(df["Date"].dt.year.unique()))
-
-    filtered = df.copy()
-
-    if day:
-        filtered = filtered[filtered["Date"] == pd.to_datetime(day)]
-
-    if month != "All":
-        filtered = filtered[filtered["Date"].dt.month == month]
-
-    if year != "All":
-        filtered = filtered[filtered["Date"].dt.year == year]
-
-    # ========= SHOW TABLE WITH EDIT DELETE =========
-    st.subheader("Entries")
-
-    for index, row in filtered.iterrows():
-
-        col1, col2, col3 = st.columns([6,1,1])
+        col1, col2 = st.columns([8,2])
 
         with col1:
-            st.write(f"{row['Date'].date()} | {row['Item']} | ₹{row['Total']:,.2f}")
+            color = "green" if row["Total"] > 0 else "red"
+            st.markdown(
+                f"""
+                <div style="padding:10px; border-radius:10px; background-color:#f5f5f5; margin-bottom:8px;">
+                <b>{row['Date'].date()}</b> | {row['Item']} | {row['Payment']} |
+                <span style='color:{color}; font-weight:bold;'>₹ {row['Total']:,.2f}</span>
+                </div>
+                """,
+                unsafe_allow_html=True
+            )
 
         with col2:
-            if st.button("✏ Edit", key=f"edit{index}"):
-                st.session_state["edit_id"] = index
-
-        with col3:
-            if st.button("❌ Delete", key=f"del{index}"):
+            if st.button("❌", key=f"del{index}"):
                 df = df.drop(index).reset_index(drop=True)
                 df.to_csv(file_name,index=False)
-                st.success("Deleted ✅")
                 st.rerun()
 
-    # ========= EDIT SECTION =========
-    if "edit_id" in st.session_state:
-
-        edit_row = df.loc[st.session_state["edit_id"]]
-
-        st.subheader("Edit Entry")
-
-        new_qty = st.text_input("New Qty", value=str(edit_row["Qty"]))
-        new_rate = st.text_input("New Rate", value=str(edit_row["Rate"]))
-
-        if st.button("Update Entry"):
-
-            new_total = round(float(new_qty)*float(new_rate),2)
-
-            if "Purchase" in edit_row["Type"]:
-                new_total = -new_total
-
-            df.loc[st.session_state["edit_id"],"Qty"] = float(new_qty)
-            df.loc[st.session_state["edit_id"],"Rate"] = float(new_rate)
-            df.loc[st.session_state["edit_id"],"Total"] = new_total
-
-            df.to_csv(file_name,index=False)
-
-            st.success("Updated ✅")
-            del st.session_state["edit_id"]
-            st.rerun()
-
-    # ========= MERGED SUMMARY =========
-    st.subheader("Combined Summary")
-
-    summary = filtered.groupby(["Item","Payment"])["Total"].sum().reset_index()
-    st.dataframe(summary)
-
-    # ========= FINAL TOTAL =========
+    # ---------- Summary ----------
     st.markdown("---")
-    total_sale = filtered[filtered["Total"] > 0]["Total"].sum()
-    total_purchase = abs(filtered[filtered["Total"] < 0]["Total"].sum())
-    net = filtered["Total"].sum()
+    st.markdown("## 📊 Summary")
 
-    st.markdown(f"### 🟢 Total Sale: ₹ {total_sale:,.2f}")
-    st.markdown(f"### 🔴 Total Purchase: ₹ {total_purchase:,.2f}")
-    st.markdown(f"## 💰 Net Balance: ₹ {net:,.2f}")
+    total_sale = df[df["Total"] > 0]["Total"].sum()
+    total_purchase = abs(df[df["Total"] < 0]["Total"].sum())
+    net = df["Total"].sum()
 
-    # ========= DOWNLOAD =========
+    c1, c2, c3 = st.columns(3)
+
+    c1.metric("Total Sale", f"₹ {total_sale:,.2f}")
+    c2.metric("Total Purchase", f"₹ {total_purchase:,.2f}")
+    c3.metric("Net Balance", f"₹ {net:,.2f}")
+
+    # ---------- Download ----------
     st.download_button(
-        "Download Excel",
-        filtered.to_csv(index=False),
+        "⬇ Download Excel",
+        df.to_csv(index=False),
         "dukaan_report.csv",
-        "text/csv"
+        "text/csv",
+        use_container_width=True
     )
