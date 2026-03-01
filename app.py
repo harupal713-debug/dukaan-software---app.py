@@ -14,13 +14,18 @@ menu = st.selectbox("Kaunsa kaam?", [
     "चावल बेचा",
 ])
 
-qty = st.number_input("Quantity (kg)", min_value=0.0, step=0.01)
-rate = st.number_input("Rate per kg", min_value=0.0, step=0.01)
+qty = st.text_input("Quantity (kg)", placeholder="kg likhe")
+rate = st.text_input("Rate per kg", placeholder="rate likhe")
 
-total = qty * rate
-total = round(total, 2)
+if qty != "" and rate != "":
+    try:
+        total = float(qty) * float(rate)
+        total = round(total, 2)
 
-if "खरीद" in menu:
-    st.error(f"देना है: ₹{total}")
-else:
-    st.success(f"लेना है: ₹{total}")
+        if "खरीद" in menu:
+            st.error(f"देना है: ₹{total}")
+        else:
+            st.success(f"लेना है: ₹{total}")
+
+    except:
+        st.error("सही नंबर लिखें")
