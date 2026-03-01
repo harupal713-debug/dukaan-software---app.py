@@ -10,45 +10,79 @@ file_name = "dukaan_data.csv"
 # ===== MENU =====
 menu = st.selectbox("Kaunsa kaam?", [
     "गेहू खरीदा",
+    "आटा पिसाई",
     "आटा बेचा",
-    "सरसों खरीदी",
     "सरसों तेल बेचा",
+    "सरसों पिसाई",
+    "सरसों खरीदी",
     "चावल खरीदा",
+    "सरसों खल बेची",
     "चावल बेचा",
 ])
 
-qty = st.number_input("Quantity (kg)", min_value=0.0, step=0.01)
-rate = st.number_input("Rate per kg", min_value=0.0, step=0.01)
+# ===== INPUT =====
+qty = st.text_input("Quantity (kg)", placeholder="कितना वजन")
+rate = st.text_input("Rate per kg", placeholder="कितने रु")
+
+total = 0
+
+# ===== LIVE CALCULATION =====
+if qty != "" and rate != "":
+    try:
+        qty_float = float(qty)
+        rate_float = float(rate)
+
+        total = round(qty_float * rate_float, 2)
+        formatted_total = f"{total:,.2f}"
+
+        if "खरीद" in menu:
+            st.markdown(
+                f"<h2 style='color:red;'>देना है: ₹ {formatted_total}</h2>",
+                unsafe_allow_html=True
+            )
+        else:
+            st.markdown(
+                f"<h2 style='color:green;'>लेना है: ₹ {formatted_total}</h2>",
+                unsafe_allow_html=True
+            )
+
+    except:
+        st.error("सही नंबर लिखें")
 
 # ===== SAVE ENTRY =====
-if st.button("Save Entry"):
+if st.button("Save Entry") and qty != "" and rate != "":
+    try:
+        qty_float = float(qty)
+        rate_float = float(rate)
+        total = round(qty_float * rate_float, 2)
 
-    total = round(qty * rate, 2)
+        if "खरीद" in menu:
+            entry_type = "Dena"
+            signed_total = -total
+        else:
+            entry_type = "Lena"
+            signed_total = total
 
-    if "खरीद" in menu:
-        entry_type = "Dena"
-        signed_total = -total
-    else:
-        entry_type = "Lena"
-        signed_total = total
+        today = datetime.now().strftime("%d-%m-%Y")
 
-    today = datetime.now().strftime("%d-%m-%Y")
+        new_entry = pd.DataFrame([{
+            "Date": today,
+            "Item": menu,
+            "Qty": qty_float,
+            "Rate": rate_float,
+            "Type": entry_type,
+            "Total": signed_total
+        }])
 
-    new_entry = pd.DataFrame([{
-        "Date": today,
-        "Item": menu,
-        "Qty": qty,
-        "Rate": rate,
-        "Type": entry_type,
-        "Total": signed_total
-    }])
+        if os.path.exists(file_name):
+            new_entry.to_csv(file_name, mode="a", header=False, index=False)
+        else:
+            new_entry.to_csv(file_name, index=False)
 
-    if os.path.exists(file_name):
-        new_entry.to_csv(file_name, mode="a", header=False, index=False)
-    else:
-        new_entry.to_csv(file_name, index=False)
+        st.success("Entry Saved Successfully!")
 
-    st.success("Entry Saved Successfully!")
+    except:
+        st.error("Save नहीं हुआ")
 
 # ===== LOAD DATA =====
 if os.path.exists(file_name):
@@ -89,7 +123,7 @@ if os.path.exists(file_name):
     total_dena = filtered_df[filtered_df["Total"] < 0]["Total"].sum()
     net_balance = filtered_df["Total"].sum()
 
-    st.write("Total Quantity:", total_qty)
+    st.write("Total Quantity:", round(total_qty,2))
     st.write("Total Lena: ₹", round(total_lena,2))
     st.write("Total Dena: ₹", round(abs(total_dena),2))
     st.write("Net Balance: ₹", round(net_balance,2))
