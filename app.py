@@ -31,8 +31,6 @@ payment_mode = st.selectbox("Payment Mode", [
 qty = st.text_input("Quantity (kg)", placeholder="कितना वजन")
 rate = st.text_input("Rate per kg", placeholder="कितने रु")
 
-total = 0
-
 # ===== LIVE CALCULATION =====
 if qty != "" and rate != "":
     try:
@@ -43,15 +41,9 @@ if qty != "" and rate != "":
         formatted_total = f"{total:,.2f}"
 
         if "खरीद" in menu:
-            st.markdown(
-                f"<h2 style='color:red;'>देना है: ₹ {formatted_total}</h2>",
-                unsafe_allow_html=True
-            )
+            st.markdown(f"<h2 style='color:red;'>देना है: ₹ {formatted_total}</h2>", unsafe_allow_html=True)
         else:
-            st.markdown(
-                f"<h2 style='color:green;'>लेना है: ₹ {formatted_total}</h2>",
-                unsafe_allow_html=True
-            )
+            st.markdown(f"<h2 style='color:green;'>लेना है: ₹ {formatted_total}</h2>", unsafe_allow_html=True)
 
     except:
         st.error("सही नंबर लिखें")
@@ -88,6 +80,7 @@ if st.button("Save Entry") and qty != "" and rate != "":
             new_entry.to_csv(file_name, index=False)
 
         st.success("Entry Saved Successfully!")
+        st.rerun()
 
     except:
         st.error("Save नहीं हुआ")
@@ -96,6 +89,10 @@ if st.button("Save Entry") and qty != "" and rate != "":
 if os.path.exists(file_name):
 
     df = pd.read_csv(file_name)
+
+    # DATE SAFE CONVERSION (CRASH FIX)
+    df["Date"] = pd.to_datetime(df["Date"], errors="coerce")
+    df = df.dropna(subset=["Date"])
 
     st.subheader("All Entries")
     st.dataframe(df)
@@ -107,17 +104,15 @@ if os.path.exists(file_name):
         delete_index = st.number_input("Row Number to Delete", min_value=0, max_value=len(df)-1, step=1)
 
         if st.button("Delete Selected Entry"):
-            df = df.drop(delete_index)
+            df = df.drop(delete_index).reset_index(drop=True)
             df.to_csv(file_name, index=False)
             st.success("Entry Deleted Successfully!")
-            st.experimental_rerun()
+            st.rerun()
 
     # ===== FILTER SECTION =====
     st.subheader("Filter Data")
 
-    df["Date"] = pd.to_datetime(df["Date"], format="%d-%m-%Y")
-
-    day_filter = st.date_input("Select Date")
+    day_filter = st.date_input("Select Date", value=None)
     month_filter = st.selectbox("Select Month", ["All"] + list(range(1,13)))
     year_filter = st.selectbox("Select Year", ["All"] + sorted(df["Date"].dt.year.unique()))
 
