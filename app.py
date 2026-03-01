@@ -15,230 +15,185 @@ def to_float(val):
     except:
         return None
 
-# ---------- Load Data ----------
+# ---------- Load ----------
 if os.path.exists(file_name):
     df = pd.read_csv(file_name)
 else:
     df = pd.DataFrame(columns=["Date","Item","Qty","Rate","Payment","Type","Total"])
 
-# ---------- ENTRY TYPE ----------
+# ---------- ENTRY ----------
 st.markdown("## ➕ New Entry")
 
-entry_category = st.selectbox("Entry Type", [
-    "Product Sale / Purchase",
-    "Extra Income",
-    "Shop Expense",
-    "Tijori In",
-    "Tijori Out"
-])
+col1,col2,col3 = st.columns(3)
 
-# ---------- PRODUCT ENTRY ----------
-if entry_category == "Product Sale / Purchase":
+with col1:
+    menu = st.selectbox("Item",[
+        "गेहू खरीदा","आटा पिसाई","आटा बेचा",
+        "सरसों तेल बेचा","सरसों पिसाई","सरसों खरीदी",
+        "चावल खरीदा","सरसों खल बेची","चावल बेचा",
+        "⚡ बिजली बिल","🛠 दुकान खर्च","♻ रद्दी बेची","➕ Other Income"
+    ])
 
-    col1, col2, col3 = st.columns(3)
+with col2:
+    payment_mode = st.selectbox("Payment",["Cash","Online","Udhar"])
 
-    with col1:
-        menu = st.selectbox("Item", [
-            "गेहू खरीदा",
-            "आटा पिसाई",
-            "आटा बेचा",
-            "सरसों तेल बेचा",
-            "सरसों पिसाई",
-            "सरसों खरीदी",
-            "चावल खरीदा",
-            "सरसों खल बेची",
-            "चावल बेचा",
-        ])
+with col3:
+    qty = st.text_input("Quantity")
 
-    with col2:
-        payment_mode = st.selectbox("Payment", ["Cash","Online","Udhar"])
+rate = st.text_input("Rate")
 
-    with col3:
-        qty = st.text_input("Quantity")
+qty_float = to_float(qty)
+rate_float = to_float(rate)
 
-    rate = st.text_input("Rate")
+if qty_float and rate_float:
+    total_preview = round(qty_float * rate_float,2)
+    if "खरीद" in menu or "बिल" in menu or "खर्च" in menu:
+        st.markdown(f"<h3 style='color:red;'>देना है ₹ {total_preview}</h3>",unsafe_allow_html=True)
+    else:
+        st.markdown(f"<h3 style='color:green;'>लेना है ₹ {total_preview}</h3>",unsafe_allow_html=True)
 
-    qty_float = to_float(qty)
-    rate_float = to_float(rate)
+# ---------- SAVE ----------
+if st.button("💾 Save Entry",use_container_width=True):
 
-    if qty_float and rate_float:
-        preview = qty_float * rate_float
-        color = "red" if "खरीद" in menu else "green"
-        text = "देना है" if "खरीद" in menu else "लेना है"
-        st.markdown(f"<h3 style='color:{color};'>{text}: ₹ {preview:,.2f}</h3>", unsafe_allow_html=True)
+    if qty_float is None or rate_float is None:
+        st.error("Number sahi likho")
+    else:
+        total = round(qty_float * rate_float,2)
 
-    if st.button("💾 Save Entry", use_container_width=True):
-        if qty_float is None or rate_float is None:
-            st.error("Number sahi likho")
+        if "खरीद" in menu or "बिल" in menu or "खर्च" in menu:
+            signed_total = -total
+            entry_type = "Expense"
         else:
-            total = qty_float * rate_float
-            signed_total = -total if "खरीद" in menu else total
-            entry_type = "Purchase" if "खरीद" in menu else "Sale"
+            signed_total = total
+            entry_type = "Income"
 
-            new_row = {
-                "Date": datetime.now().strftime("%Y-%m-%d"),
-                "Item": menu,
-                "Qty": qty_float,
-                "Rate": rate_float,
-                "Payment": payment_mode,
-                "Type": entry_type,
-                "Total": signed_total
-            }
-
-            df = pd.concat([df, pd.DataFrame([new_row])], ignore_index=True)
-            df.to_csv(file_name,index=False)
-            st.success("Saved ✅")
-            st.rerun()
-
-# ---------- EXTRA INCOME ----------
-elif entry_category == "Extra Income":
-
-    desc = st.text_input("Income Description (e.g. रद्दी बेचना)")
-    amount = st.number_input("Amount", min_value=0.0)
-
-    if st.button("💾 Save Income"):
         new_row = {
             "Date": datetime.now().strftime("%Y-%m-%d"),
-            "Item": desc,
-            "Qty": 0,
-            "Rate": 0,
-            "Payment": "Cash",
-            "Type": "Extra Income",
-            "Total": amount
+            "Item": menu,
+            "Qty": qty_float,
+            "Rate": rate_float,
+            "Payment": payment_mode,
+            "Type": entry_type,
+            "Total": signed_total
         }
-        df = pd.concat([df, pd.DataFrame([new_row])], ignore_index=True)
-        df.to_csv(file_name,index=False)
-        st.success("Income Saved ✅")
-        st.rerun()
 
-# ---------- SHOP EXPENSE ----------
-elif entry_category == "Shop Expense":
-
-    desc = st.text_input("Expense Description (e.g. बिजली बिल)")
-    amount = st.number_input("Amount", min_value=0.0)
-
-    if st.button("💾 Save Expense"):
-        new_row = {
-            "Date": datetime.now().strftime("%Y-%m-%d"),
-            "Item": desc,
-            "Qty": 0,
-            "Rate": 0,
-            "Payment": "Cash",
-            "Type": "Expense",
-            "Total": -amount
-        }
-        df = pd.concat([df, pd.DataFrame([new_row])], ignore_index=True)
-        df.to_csv(file_name,index=False)
-        st.success("Expense Saved ✅")
-        st.rerun()
-
-# ---------- TIJORI IN ----------
-elif entry_category == "Tijori In":
-
-    amount = st.number_input("Amount Put in Tijori", min_value=0.0)
-
-    if st.button("💾 Save"):
-        new_row = {
-            "Date": datetime.now().strftime("%Y-%m-%d"),
-            "Item": "Tijori In",
-            "Qty": 0,
-            "Rate": 0,
-            "Payment": "Cash",
-            "Type": "Tijori In",
-            "Total": -amount
-        }
-        df = pd.concat([df, pd.DataFrame([new_row])], ignore_index=True)
+        df = pd.concat([df,pd.DataFrame([new_row])],ignore_index=True)
         df.to_csv(file_name,index=False)
         st.success("Saved ✅")
         st.rerun()
 
-# ---------- TIJORI OUT ----------
-elif entry_category == "Tijori Out":
-
-    amount = st.number_input("Amount Taken from Tijori", min_value=0.0)
-
-    if st.button("💾 Save"):
-        new_row = {
-            "Date": datetime.now().strftime("%Y-%m-%d"),
-            "Item": "Tijori Out",
-            "Qty": 0,
-            "Rate": 0,
-            "Payment": "Cash",
-            "Type": "Tijori Out",
-            "Total": amount
-        }
-        df = pd.concat([df, pd.DataFrame([new_row])], ignore_index=True)
-        df.to_csv(file_name,index=False)
-        st.success("Saved ✅")
-        st.rerun()
-
-# ---------- SHOW DATA ----------
+# ---------- PROCESS ----------
 if not df.empty:
 
     df["Date"] = pd.to_datetime(df["Date"])
+    df["Qty"] = pd.to_numeric(df["Qty"])
     df["Total"] = pd.to_numeric(df["Total"])
 
     st.markdown("---")
+    st.markdown("## 🔍 Filter")
+
+    filter_type = st.selectbox("Period",["All","Day","Month","Year"])
+
+    filtered_df = df.copy()
+
+    if filter_type=="Day":
+        day = st.date_input("Select Day")
+        filtered_df = df[df["Date"].dt.date==day]
+
+    elif filter_type=="Month":
+        m = st.selectbox("Month",range(1,13))
+        y = st.selectbox("Year",df["Date"].dt.year.unique())
+        filtered_df = df[(df["Date"].dt.month==m)&(df["Date"].dt.year==y)]
+
+    elif filter_type=="Year":
+        y = st.selectbox("Year",df["Date"].dt.year.unique())
+        filtered_df = df[df["Date"].dt.year==y]
+
+    # ---------- SUMMARY ----------
+    st.markdown("## 📊 Summary")
+
+    total_income = filtered_df[filtered_df["Total"]>0]["Total"].sum()
+    total_expense = abs(filtered_df[filtered_df["Total"]<0]["Total"].sum())
+    net = filtered_df["Total"].sum()
+
+    c1,c2,c3 = st.columns(3)
+    c1.metric("Total Income",f"₹ {total_income:,.2f}")
+    c2.metric("Total Expense",f"₹ {total_expense:,.2f}")
+    c3.metric("Net Profit",f"₹ {net:,.2f}")
+
+    # ---------- TIJORI ----------
+    st.markdown("## 💰 Daily Tijori")
+
+    cash_income = filtered_df[(filtered_df["Payment"]=="Cash") & (filtered_df["Total"]>0)]["Total"].sum()
+    cash_expense = abs(filtered_df[(filtered_df["Payment"]=="Cash") & (filtered_df["Total"]<0)]["Total"].sum())
+    closing_cash = cash_income - cash_expense
+
+    c4,c5,c6 = st.columns(3)
+    c4.metric("Cash Aaya",f"₹ {cash_income:,.2f}")
+    c5.metric("Cash Gaya",f"₹ {cash_expense:,.2f}")
+    c6.metric("Tijori Closing",f"₹ {closing_cash:,.2f}")
+
+    # ---------- ITEM WISE ----------
+    st.markdown("## 📦 Item Wise Detail")
+    st.dataframe(filtered_df.groupby("Item")[["Qty","Total"]].sum().reset_index(),use_container_width=True)
+
+    # ---------- ENTRIES ----------
     st.markdown("## 📋 All Entries")
 
-    for index, row in df.iterrows():
+    for index,row in df.iterrows():
 
-        col1, col2, col3 = st.columns([6,1,1])
+        col1,col2,col3 = st.columns([6,1,1])
 
         with col1:
-            color = "green" if row["Total"] > 0 else "red"
-            st.markdown(
-                f"<b>{row['Date'].date()}</b> | {row['Item']} | ₹ <span style='color:{color};'>{row['Total']:,.2f}</span>",
-                unsafe_allow_html=True
-            )
+            color="green" if row["Total"]>0 else "red"
+            st.markdown(f"{row['Date'].date()} | {row['Item']} | ₹ <span style='color:{color}'>{row['Total']}</span>",unsafe_allow_html=True)
 
         with col2:
-            if st.button("✏️", key=f"edit{index}"):
-                st.session_state["edit_index"] = index
+            if st.button("✏️",key=f"edit{index}"):
+                st.session_state["edit"]=index
 
         with col3:
-            if st.button("❌", key=f"del{index}"):
-                df = df.drop(index).reset_index(drop=True)
+            if st.button("❌",key=f"del{index}"):
+                df=df.drop(index).reset_index(drop=True)
                 df.to_csv(file_name,index=False)
                 st.rerun()
 
-    # ---------- EDIT FULL ----------
-    if "edit_index" in st.session_state:
+    # ---------- FULL EDIT ----------
+    if "edit" in st.session_state:
 
-        st.markdown("---")
         st.markdown("## ✏️ Edit Entry")
 
-        i = st.session_state["edit_index"]
-        row = df.loc[i]
+        i=st.session_state["edit"]
+        row=df.loc[i]
 
-        new_date = st.date_input("Date", value=row["Date"])
-        new_item = st.text_input("Item", value=row["Item"])
-        new_qty = st.number_input("Qty", value=float(row["Qty"]))
-        new_rate = st.number_input("Rate", value=float(row["Rate"]))
-        new_payment = st.selectbox("Payment", ["Cash","Online","Udhar"], index=0)
+        new_date = st.date_input("Date",row["Date"])
+        new_item = st.text_input("Item",row["Item"])
+        new_qty = st.number_input("Qty",value=float(row["Qty"]))
+        new_rate = st.number_input("Rate",value=float(row["Rate"]))
+        new_payment = st.selectbox("Payment",["Cash","Online","Udhar"],index=["Cash","Online","Udhar"].index(row["Payment"]))
 
-        if st.button("Update Entry"):
-            new_total = new_qty * new_rate
-            if row["Total"] < 0:
+        if st.button("Update"):
+
+            new_total = new_qty*new_rate
+
+            if row["Total"]<0:
                 new_total = -abs(new_total)
 
-            df.at[i,"Date"] = new_date
-            df.at[i,"Item"] = new_item
-            df.at[i,"Qty"] = new_qty
-            df.at[i,"Rate"] = new_rate
-            df.at[i,"Payment"] = new_payment
-            df.at[i,"Total"] = new_total
+            df.at[i,"Date"]=new_date
+            df.at[i,"Item"]=new_item
+            df.at[i,"Qty"]=new_qty
+            df.at[i,"Rate"]=new_rate
+            df.at[i,"Payment"]=new_payment
+            df.at[i,"Total"]=new_total
 
             df.to_csv(file_name,index=False)
-            del st.session_state["edit_index"]
+            del st.session_state["edit"]
             st.success("Updated ✅")
             st.rerun()
 
-    # ---------- DAILY SUMMARY ----------
-    st.markdown("---")
-    st.markdown("## 📊 Today Summary")
-
-    today = datetime.now().date()
-    today_df = df[df["Date"].dt.date == today]
-
-    st.metric("Today Net", f"₹ {today_df['Total'].sum():,.2f}")
+    # ---------- DOWNLOAD ----------
+    st.download_button("⬇ Download Report",
+                       filtered_df.to_csv(index=False),
+                       "report.csv",
+                       "text/csv",
+                       use_container_width=True)
