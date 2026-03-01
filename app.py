@@ -5,30 +5,22 @@ st.title("SACHIN AATA CHHAKI")
 menu = st.selectbox("Kaunsa kaam?", [
     "गेहू खरीदा",
     "आटा पिसाई",
-    "आटा बेचा  ",
-    "सरसों तेल बेचा ",
+    "आटा बेचा",
+    "सरसों तेल बेचा",
     "सरसों पिसाई",
-    "सरसों खरीदी ",
+    "सरसों खरीदी",
     "चावल खरीदा",
-    "सरसों खल बेची ",
-    "चावला बेचा ",
+    "सरसों खल बेची",
+    "चावल बेचा",
 ])
 
-qty = st.text_input("Quantity (kg)")
-rate = st.text_input("Rate per kg")
+qty = st.number_input("Quantity (kg)", min_value=0.0, step=0.01)
+rate = st.number_input("Rate per kg", min_value=0.0, step=0.01)
 
-if qty and rate:
-    try:
-        qty = float(qty)
-        rate = float(rate)
+total = qty * rate
+total = round(total, 2)
 
-        total = qty * rate
-        total = round(total, 2)
-
-        if "खरीद" in menu:
-            st.error(f"देना है: ₹{total}")
-        else:
-            st.success(f"लेना है: ₹{total}")
-
-    except:
-        st.error("सही नंबर लिखें")
+if "खरीद" in menu:
+    st.error(f"देना है: ₹{total}")
+else:
+    st.success(f"लेना है: ₹{total}")
