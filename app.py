@@ -4,19 +4,19 @@ st.title("SACHIN AATA CHHAKI")
 
 menu = st.selectbox("Kaunsa kaam?", [
     "गेहू खरीदा",
-    "आटा पिसाई (₹60/kg)",
+    "आटा पिसाई (₹2.40/kg)",
     "आटा सेल",
     "सरसों तेल सेल",
-    "सरसों पिसाई (₹60/kg)",
+    "सरसों पिसाई (₹2.40/kg)",
     "सरसों खरीद"
 ])
 
-qty = st.number_input("Quantity (kg)", min_value=0.0)
-rate = st.number_input("Rate per kg", min_value=0.0)
+qty = st.number_input("Quantity (kg)", min_value=0)
+rate = st.number_input("Rate per kg", min_value=0)
 
 # Auto calculation
 if "पिसाई" in menu:
-    total = qty * 60
+    total = qty * पिसाई
 else:
     total = qty * rate
 
