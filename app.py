@@ -3,18 +3,24 @@ import pandas as pd
 import os
 from datetime import datetime
 
-st.title("SACHIN AATA CHHAKI - DUKAAN MANAGEMENT")
+st.title("SACHIN AATA CHHAKI - ADVANCE MANAGEMENT")
 
 file_name = "dukaan_data.csv"
 
-# ===== SAFE FLOAT FUNCTION =====
-def to_float(value):
+# ========= SAFE FLOAT =========
+def to_float(val):
     try:
-        return float(value)
+        return float(val)
     except:
         return None
 
-# ===== MENU =====
+# ========= LOAD DATA =========
+if os.path.exists(file_name):
+    df = pd.read_csv(file_name)
+else:
+    df = pd.DataFrame(columns=["Date","Item","Qty","Rate","Payment","Type","Total"])
+
+# ========= MENU =========
 menu = st.selectbox("Kaunsa kaam?", [
     "गेहू खरीदा",
     "आटा पिसाई",
@@ -27,113 +33,115 @@ menu = st.selectbox("Kaunsa kaam?", [
     "चावल बेचा",
 ])
 
-# ===== PAYMENT MODE =====
-payment_mode = st.selectbox("Payment Mode", [
-    "Cash",
-    "Online",
-    "Udhar"
-])
+payment_mode = st.selectbox("Payment Mode", ["Cash","Online","Udhar"])
 
-# ===== INPUT =====
 qty = st.text_input("Quantity (kg)")
 rate = st.text_input("Rate per kg")
 
 qty_float = to_float(qty)
 rate_float = to_float(rate)
 
-# ===== LIVE TOTAL =====
-if qty_float is not None and rate_float is not None:
-    total = round(qty_float * rate_float, 2)
-
+# ========= LIVE TOTAL =========
+if qty_float and rate_float:
+    total = round(qty_float * rate_float,2)
     if "खरीद" in menu:
-        st.markdown(f"<h2 style='color:red;'>देना है: ₹ {total:,.2f}</h2>", unsafe_allow_html=True)
+        st.markdown(f"### 🔴 देना है: ₹ {total:,.2f}")
     else:
-        st.markdown(f"<h2 style='color:green;'>लेना है: ₹ {total:,.2f}</h2>", unsafe_allow_html=True)
+        st.markdown(f"### 🟢 लेना है: ₹ {total:,.2f}")
 
-elif qty != "" or rate != "":
-    st.warning("सही नंबर लिखें")
-
-# ===== SAVE ENTRY =====
+# ========= SAVE =========
 if st.button("Save Entry"):
-
     if qty_float is None or rate_float is None:
-        st.error("Quantity aur Rate sahi number me likho")
-
+        st.error("Number sahi likho")
     else:
-        total = round(qty_float * rate_float, 2)
+        total = round(qty_float * rate_float,2)
 
         if "खरीद" in menu:
-            entry_type = "Dena"
+            entry_type = "Purchase"
             signed_total = -total
         else:
-            entry_type = "Lena"
+            entry_type = "Sale"
             signed_total = total
 
-        today = datetime.now().strftime("%d-%m-%Y")
-
-        new_entry = pd.DataFrame([{
-            "Date": today,
+        new_row = {
+            "Date": datetime.now().strftime("%d-%m-%Y"),
             "Item": menu,
             "Qty": qty_float,
             "Rate": rate_float,
             "Payment": payment_mode,
             "Type": entry_type,
             "Total": signed_total
-        }])
+        }
 
-        columns = ["Date","Item","Qty","Rate","Payment","Type","Total"]
-        new_entry = new_entry[columns]
+        df = pd.concat([df, pd.DataFrame([new_row])], ignore_index=True)
+        df.to_csv(file_name,index=False)
 
-        try:
-            if os.path.exists(file_name):
-                old_df = pd.read_csv(file_name)
-                full_df = pd.concat([old_df, new_entry], ignore_index=True)
-                full_df.to_csv(file_name, index=False)
-            else:
-                new_entry.to_csv(file_name, index=False)
+        st.success("Entry Saved ✅")
 
-            st.success("✅ Entry Saved Successfully!")
-
-        except Exception as e:
-            st.error(f"Save Error: {e}")
-
-# ===== LOAD DATA =====
-if os.path.exists(file_name):
-
-    df = pd.read_csv(file_name)
-
-    # SAFE NUMERIC CONVERSION
+# ========= FORMAT =========
+if not df.empty:
+    df["Date"] = pd.to_datetime(df["Date"], format="%d-%m-%Y", errors="coerce")
     df["Qty"] = pd.to_numeric(df["Qty"], errors="coerce")
-    df["Rate"] = pd.to_numeric(df["Rate"], errors="coerce")
     df["Total"] = pd.to_numeric(df["Total"], errors="coerce")
 
-    df["Date"] = pd.to_datetime(df["Date"], errors="coerce")
-    df = df.dropna(subset=["Date"])
+# ========= EDIT DELETE =========
+st.subheader("Edit / Delete Entry")
 
-    st.subheader("All Entries")
-    st.dataframe(df)
+if not df.empty:
 
-    # ===== SUMMARY =====
+    row_id = st.number_input("Row Number", 0, len(df)-1, 0)
+
+    if st.button("Delete Selected"):
+        df = df.drop(row_id).reset_index(drop=True)
+        df.to_csv(file_name,index=False)
+        st.success("Deleted ✅")
+        st.rerun()
+
+# ========= FILTER =========
+st.subheader("Filter Section")
+
+if not df.empty:
+
+    day = st.date_input("Select Date", value=None)
+    month = st.selectbox("Month", ["All"] + list(range(1,13)))
+    year = st.selectbox("Year", ["All"] + sorted(df["Date"].dt.year.unique()))
+
+    filtered = df.copy()
+
+    if day:
+        filtered = filtered[filtered["Date"] == pd.to_datetime(day)]
+
+    if month != "All":
+        filtered = filtered[filtered["Date"].dt.month == month]
+
+    if year != "All":
+        filtered = filtered[filtered["Date"].dt.year == year]
+
+    st.dataframe(filtered)
+
+    # ========= SUMMARY =========
     st.subheader("Summary")
 
-    total_qty = df["Qty"].sum()
-    total_lena = df[df["Total"] > 0]["Total"].sum()
-    total_dena = df[df["Total"] < 0]["Total"].sum()
-    net_balance = df["Total"].sum()
+    total_sale = filtered[filtered["Total"] > 0]["Total"].sum()
+    total_purchase = abs(filtered[filtered["Total"] < 0]["Total"].sum())
+    net = filtered["Total"].sum()
 
-    st.write("Total Quantity:", round(total_qty,2))
-    st.write("Total Lena: ₹", round(total_lena,2))
-    st.write("Total Dena: ₹", round(abs(total_dena),2))
-    st.write("Net Balance: ₹", round(net_balance,2))
+    st.write("Total Sale ₹:", round(total_sale,2))
+    st.write("Total Purchase ₹:", round(total_purchase,2))
+    st.write("Net Balance ₹:", round(net,2))
 
-    # PAYMENT SUMMARY
-    st.subheader("Payment Mode Summary")
-    st.dataframe(df.groupby("Payment")["Total"].sum().reset_index())
+    # ========= ITEM WISE =========
+    st.subheader("Item Wise Summary")
+    st.dataframe(filtered.groupby("Item")["Total"].sum().reset_index())
 
-    # DOWNLOAD
+    # ========= PAYMENT WISE =========
+    st.subheader("Payment Wise Summary")
+    st.dataframe(filtered.groupby("Payment")["Total"].sum().reset_index())
+
+    # ========= DOWNLOAD =========
     st.download_button(
-        label="Download Excel",
-        data=df.to_csv(index=False),
-        file_name="dukaan_data.csv",
-        mime="text/csv"
+        "Download Excel",
+        filtered.to_csv(index=False),
+        "dukaan_report.csv",
+        "text/csv"
     )
