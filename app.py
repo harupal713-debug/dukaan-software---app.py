@@ -17,7 +17,7 @@ rate = st.number_input("Rate per kg", min_value=0.0)
 if menu == "Pisai / Oil Charge (₹60 per kg)":
     total = qty * 60
 else:
-    total = qty * rate
+    total = round(total)
 
 if "खरीद" in menu or "kharid" in menu:
     st.error(f"Dena hai: ₹{total}")
