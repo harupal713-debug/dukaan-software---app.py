@@ -15,9 +15,17 @@ qty = st.text_input("Quantity (kg)")
 rate = st.text_input("Rate per kg")
 
 if qty and rate:
-    total = float(qty) * float(rate)
-    total = round(total, 2)
-    st.write("Total Amount: ₹", total)
+    try:
+        qty = float(qty)
+        rate = float(rate)
+
+        total = qty * rate
+        total = round(total, 2)
+
+        st.write("Total Amount: ₹", total)
+
+    except:
+        st.error("सही नंबर लिखें")
 # Auto calculation
 if "पिसाई" in menu:
     total = qty * 60
