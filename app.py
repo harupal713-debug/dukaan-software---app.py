@@ -1,4 +1,4 @@
-import streamlit as st
+import streamlit as st 
 import pandas as pd
 import os
 from datetime import datetime
@@ -36,61 +36,73 @@ if qty != "" and rate != "":
     try:
         qty_float = float(qty)
         rate_float = float(rate)
-
         total = round(qty_float * rate_float, 2)
-        formatted_total = f"{total:,.2f}"
 
         if "खरीद" in menu:
-            st.markdown(f"<h2 style='color:red;'>देना है: ₹ {formatted_total}</h2>", unsafe_allow_html=True)
+            st.markdown(f"<h2 style='color:red;'>देना है: ₹ {total:,.2f}</h2>", unsafe_allow_html=True)
         else:
-            st.markdown(f"<h2 style='color:green;'>लेना है: ₹ {formatted_total}</h2>", unsafe_allow_html=True)
+            st.markdown(f"<h2 style='color:green;'>लेना है: ₹ {total:,.2f}</h2>", unsafe_allow_html=True)
 
     except:
         st.error("सही नंबर लिखें")
 
 # ===== SAVE ENTRY =====
-if st.button("Save Entry") and qty != "" and rate != "":
-    try:
-        qty_float = float(qty)
-        rate_float = float(rate)
-        total = round(qty_float * rate_float, 2)
+if st.button("Save Entry"):
 
-        if "खरीद" in menu:
-            entry_type = "Dena"
-            signed_total = -total
-        else:
-            entry_type = "Lena"
-            signed_total = total
+    if qty == "" or rate == "":
+        st.warning("Quantity aur Rate bhare bina save nahi hoga")
+    else:
+        try:
+            qty_float = float(qty)
+            rate_float = float(rate)
+            total = round(qty_float * rate_float, 2)
 
-        today = datetime.now().strftime("%d-%m-%Y")
+            if "खरीद" in menu:
+                entry_type = "Dena"
+                signed_total = -total
+            else:
+                entry_type = "Lena"
+                signed_total = total
 
-        new_entry = pd.DataFrame([{
-            "Date": today,
-            "Item": menu,
-            "Qty": qty_float,
-            "Rate": rate_float,
-            "Payment": payment_mode,
-            "Type": entry_type,
-            "Total": signed_total
-        }])
+            today = datetime.now().strftime("%d-%m-%Y")
 
-        if os.path.exists(file_name):
-            new_entry.to_csv(file_name, mode="a", header=False, index=False)
-        else:
-            new_entry.to_csv(file_name, index=False)
+            new_entry = pd.DataFrame([{
+                "Date": today,
+                "Item": menu,
+                "Qty": qty_float,
+                "Rate": rate_float,
+                "Payment": payment_mode,
+                "Type": entry_type,
+                "Total": signed_total
+            }])
 
-        st.success("Entry Saved Successfully!")
-        st.rerun()
+            if os.path.exists(file_name):
+                new_entry.to_csv(file_name, mode="a", header=False, index=False)
+            else:
+                new_entry.to_csv(file_name, index=False)
 
-    except:
-        st.error("Save नहीं हुआ")
+            st.success("Entry Saved Successfully!")
+            st.rerun()
+
+        except:
+            st.error("Number sahi likho")
 
 # ===== LOAD DATA =====
 if os.path.exists(file_name):
 
     df = pd.read_csv(file_name)
 
-    # DATE SAFE CONVERSION (CRASH FIX)
+    # ===== COLUMN SAFETY FIX =====
+    if "Payment" not in df.columns:
+        df["Payment"] = "Cash"
+
+    if "Type" not in df.columns:
+        df["Type"] = ""
+
+    if "Total" not in df.columns:
+        df["Total"] = 0
+
+    # ===== DATE SAFE CONVERSION =====
     df["Date"] = pd.to_datetime(df["Date"], errors="coerce")
     df = df.dropna(subset=["Date"])
 
@@ -112,7 +124,7 @@ if os.path.exists(file_name):
     # ===== FILTER SECTION =====
     st.subheader("Filter Data")
 
-    day_filter = st.date_input("Select Date", value=None)
+    day_filter = st.date_input("Select Date")
     month_filter = st.selectbox("Select Month", ["All"] + list(range(1,13)))
     year_filter = st.selectbox("Select Year", ["All"] + sorted(df["Date"].dt.year.unique()))
 
@@ -150,8 +162,12 @@ if os.path.exists(file_name):
 
     # ===== PAYMENT SUMMARY =====
     st.subheader("Payment Mode Summary")
-    payment_summary = filtered_df.groupby("Payment")["Total"].sum().reset_index()
-    st.dataframe(payment_summary)
+
+    if "Payment" in filtered_df.columns:
+        payment_summary = filtered_df.groupby("Payment")["Total"].sum().reset_index()
+        st.dataframe(payment_summary)
+    else:
+        st.info("Payment data available nahi hai")
 
     # ===== DOWNLOAD BUTTON =====
     st.download_button(
