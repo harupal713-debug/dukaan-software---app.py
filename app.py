@@ -15,7 +15,7 @@ qty = st.number_input("Quantity (kg)", min_value=0.0)
 rate = st.number_input("Rate per kg", min_value=0.0)
 
 if menu == "Pisai / Oil Charge (₹60 per kg)":
-    total = qty * 60
+    total = round(total)
 else:
     total = round(total)
 
