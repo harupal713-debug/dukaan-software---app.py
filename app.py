@@ -12,7 +12,7 @@ menu = st.selectbox("Kaunsa kaam?", [
 ])
 
 qty = st.number_input("Quantity (kg)", min_value=0.000)
-rate = st.number_input("Rate per kg", min_value=0)
+rate = st.number_input("Rate per kg", min_value=0.0)
 
 # Auto calculation
 if "पिसाई" in menu:
