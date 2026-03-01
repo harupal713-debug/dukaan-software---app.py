@@ -14,8 +14,8 @@ menu = st.selectbox("Kaunsa kaam?", [
     "चावल बेचा",
 ])
 
-qty = st.text_input("Quantity (kg)", placeholder="kg likhe")
-rate = st.text_input("Rate per kg", placeholder="rate likhe")
+qty = st.text_input("Quantity (kg)", placeholder="कितना वजन ")
+rate = st.text_input("Rate per kg", placeholder="कितने रु ")
 
 if qty != "" and rate != "":
     try:
