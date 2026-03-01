@@ -11,8 +11,13 @@ menu = st.selectbox("Kaunsa kaam?", [
     "सरसों खरीद"
 ])
 
-qty = st.number_input("Quantity (kg)", min_value=0.0, format="%.2f")
-rate = st.number_input("Rate per kg", min_value=0.0, format="%.2f")
+qty = st.text_input("Quantity (kg)")
+rate = st.text_input("Rate per kg")
+
+if qty and rate:
+    total = float(qty) * float(rate)
+    total = round(total, 2)
+    st.write("Total Amount: ₹", total)
 # Auto calculation
 if "पिसाई" in menu:
     total = qty * 60
