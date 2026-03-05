@@ -35,10 +35,12 @@ else:
         "Payment","Type","Total"
     ])
 
-# SAFE FORMAT
-df["Date"] = pd.to_datetime(df["Date"], errors="coerce")
-df["Total"] = pd.to_numeric(df["Total"], errors="coerce")
-df["Qty"] = pd.to_numeric(df["Qty"], errors="coerce")
+# SAFE CONVERT (ERROR FREE)
+if not df.empty:
+    df["Date"] = pd.to_datetime(df["Date"], errors="coerce")
+    df["Qty"] = pd.to_numeric(df["Qty"], errors="coerce").fillna(0)
+    df["Rate"] = pd.to_numeric(df["Rate"], errors="coerce").fillna(0)
+    df["Total"] = pd.to_numeric(df["Total"], errors="coerce").fillna(0)
 
 # ---------------- NEW ENTRY ----------------
 st.subheader("➕ New Entry")
@@ -92,65 +94,69 @@ if st.button("💾 Save Entry"):
 
         df = pd.concat([df,pd.DataFrame([new_row])],ignore_index=True)
         df.to_csv(file_name,index=False)
-        st.success("Saved")
+        st.success("Saved Successfully")
         st.rerun()
 
 # ---------------- STOCK AUTO ----------------
 st.subheader("📦 Stock Status")
 
-stock_df = df[df["Item"].notna()].copy()
-
 stock = {}
 
-for i,row in stock_df.iterrows():
+for _,row in df.iterrows():
     name = row["Item"]
-    if "खरीद" in name:
+
+    if "खरीद" in str(name):
         stock[name] = stock.get(name,0) + row["Qty"]
-    else:
-        buy_item = name.replace("बेचा","खरीदा")
-        stock[buy_item] = stock.get(buy_item,0) - row["Qty"]
+    elif "बेचा" in str(name):
+        buy_name = name.replace("बेचा","खरीदा")
+        stock[buy_name] = stock.get(buy_name,0) - row["Qty"]
 
-stock_table = pd.DataFrame(stock.items(),columns=["Item","Stock Qty"])
-st.dataframe(stock_table)
+stock_df = pd.DataFrame(stock.items(),columns=["Item","Stock Qty"])
+st.dataframe(stock_df)
 
-# ---------------- FILTER ----------------
+# ---------------- REPORT FILTER ----------------
 st.subheader("📊 Reports")
 
 filter_type = st.selectbox("Select Period",["All","Day","Month","Year"])
 
 filtered = df.copy()
 
-if filter_type=="Day":
-    d = st.date_input("Select Day")
-    filtered = df[df["Date"].dt.date==d]
+if not df.empty:
 
-elif filter_type=="Month":
-    m = st.selectbox("Month",range(1,13))
-    y = st.selectbox("Year",df["Date"].dt.year.unique())
-    filtered = df[(df["Date"].dt.month==m)&(df["Date"].dt.year==y)]
+    if filter_type=="Day":
+        d = st.date_input("Select Day")
+        filtered = df[df["Date"].dt.date==d]
 
-elif filter_type=="Year":
-    y = st.selectbox("Year",df["Date"].dt.year.unique())
-    filtered = df[df["Date"].dt.year==y]
+    elif filter_type=="Month":
+        m = st.selectbox("Month",range(1,13))
+        y = st.selectbox("Year",sorted(df["Date"].dt.year.dropna().unique()))
+        filtered = df[(df["Date"].dt.month==m)&(df["Date"].dt.year==y)]
+
+    elif filter_type=="Year":
+        y = st.selectbox("Year",sorted(df["Date"].dt.year.dropna().unique()))
+        filtered = df[df["Date"].dt.year==y]
 
 # ---------------- SUMMARY ----------------
-income = filtered[filtered["Total"]>0]["Total"].sum()
-expense = abs(filtered[filtered["Total"]<0]["Total"].sum())
-net = filtered["Total"].sum()
+if not filtered.empty:
 
-col1,col2,col3 = st.columns(3)
-col1.metric("Income",f"₹ {income}")
-col2.metric("Expense",f"₹ {expense}")
-col3.metric("Net",f"₹ {net}")
+    income = filtered[filtered["Total"]>0]["Total"].sum()
+    expense = abs(filtered[filtered["Total"]<0]["Total"].sum())
+    net = filtered["Total"].sum()
+
+    col1,col2,col3 = st.columns(3)
+    col1.metric("Income",f"₹ {income:,.2f}")
+    col2.metric("Expense",f"₹ {expense:,.2f}")
+    col3.metric("Net Balance",f"₹ {net:,.2f}")
 
 # ---------------- GRAPH ----------------
-st.subheader("📈 Graph")
+st.subheader("📈 Daily Graph")
 
-daily = filtered.groupby(filtered["Date"].dt.date)["Total"].sum()
+if not filtered.empty:
+    daily = filtered.groupby(filtered["Date"].dt.date)["Total"].sum()
 
-plt.figure()
-daily.plot(kind="bar")
-st.pyplot(plt)
+    fig, ax = plt.subplots()
+    daily.plot(kind="bar", ax=ax)
+    st.pyplot(fig)
 
 # ---------------- UDhar LEDGER ----------------
 st.subheader("📒 Udhar Ledger")
@@ -166,19 +172,29 @@ st.subheader("📝 All Entries")
 
 for i,row in df.iterrows():
 
-    col1,col2,col3,col4 = st.columns([3,1,1,1])
+    col1,col2,col3 = st.columns([5,1,1])
 
-    col1.write(row["Date"],row["Item"],row["Total"])
+    col1.write(
+        f"{row['Date']} | {row['Item']} | ₹ {row['Total']}"
+    )
 
-    if col2.button("Edit",key=f"edit{i}"):
-        df.at[i,"Rate"]=st.number_input("New Rate",value=row["Rate"])
-        df.at[i,"Total"]=df.at[i,"Qty"]*df.at[i,"Rate"]
+    if col2.button("✏ Edit",key=f"edit{i}"):
+
+        new_rate = st.number_input("New Rate",value=float(row["Rate"]),key=f"rate{i}")
+        new_total = row["Qty"] * new_rate
+
+        df.at[i,"Rate"]=new_rate
+        df.at[i,"Total"]=new_total
+
         df.to_csv(file_name,index=False)
+        st.success("Updated")
         st.rerun()
 
-    if col3.button("Delete",key=f"del{i}"):
-        df = df.drop(i)
+    if col3.button("🗑 Delete",key=f"del{i}"):
+
+        df = df.drop(i).reset_index(drop=True)
         df.to_csv(file_name,index=False)
+        st.success("Deleted")
         st.rerun()
 
 # ---------------- DOWNLOAD ----------------
