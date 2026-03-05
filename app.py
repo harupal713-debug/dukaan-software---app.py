@@ -2,7 +2,6 @@ import streamlit as st
 import pandas as pd
 import os
 from datetime import datetime
-import matplotlib.pyplot as plt
 
 st.set_page_config(page_title="SACHIN AATA CHHAKI", layout="wide")
 
@@ -35,7 +34,7 @@ else:
         "Payment","Type","Total"
     ])
 
-# SAFE CONVERT (ERROR FREE)
+# SAFE CONVERT
 if not df.empty:
     df["Date"] = pd.to_datetime(df["Date"], errors="coerce")
     df["Qty"] = pd.to_numeric(df["Qty"], errors="coerce").fillna(0)
@@ -148,15 +147,12 @@ if not filtered.empty:
     col2.metric("Expense",f"₹ {expense:,.2f}")
     col3.metric("Net Balance",f"₹ {net:,.2f}")
 
-# ---------------- GRAPH ----------------
+# ---------------- GRAPH (NO MATPLOTLIB) ----------------
 st.subheader("📈 Daily Graph")
 
 if not filtered.empty:
     daily = filtered.groupby(filtered["Date"].dt.date)["Total"].sum()
-
-    fig, ax = plt.subplots()
-    daily.plot(kind="bar", ax=ax)
-    st.pyplot(fig)
+    st.bar_chart(daily)
 
 # ---------------- UDhar LEDGER ----------------
 st.subheader("📒 Udhar Ledger")
@@ -179,22 +175,15 @@ for i,row in df.iterrows():
     )
 
     if col2.button("✏ Edit",key=f"edit{i}"):
-
         new_rate = st.number_input("New Rate",value=float(row["Rate"]),key=f"rate{i}")
-        new_total = row["Qty"] * new_rate
-
         df.at[i,"Rate"]=new_rate
-        df.at[i,"Total"]=new_total
-
+        df.at[i,"Total"]=row["Qty"]*new_rate
         df.to_csv(file_name,index=False)
-        st.success("Updated")
         st.rerun()
 
     if col3.button("🗑 Delete",key=f"del{i}"):
-
         df = df.drop(i).reset_index(drop=True)
         df.to_csv(file_name,index=False)
-        st.success("Deleted")
         st.rerun()
 
 # ---------------- DOWNLOAD ----------------
