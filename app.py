@@ -11,7 +11,7 @@ USER_FILE = "users.csv"
 # ---------------- USER SETUP ----------------
 if not os.path.exists(USER_FILE):
     users = pd.DataFrame({
-        "username":["admin"],
+        "username":["sachin"],
         "password":["1234"],
         "role":["Admin"]
     })
