@@ -11,9 +11,9 @@ USER_FILE = "users.csv"
 # ---------------- INIT ----------------
 if not os.path.exists(USER_FILE):
     users = pd.DataFrame({
-        "username": ["Admin"],
+        "username": ["admin"],
         "password": ["1234"],
-        "role": ["Admin"]
+        "role": ["admin"]
     })
     users.to_csv(USER_FILE, index=False)
 
