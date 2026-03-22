@@ -13,7 +13,7 @@ if not os.path.exists(USER_FILE):
     users = pd.DataFrame({
         "username":["sachin"],
         "password":["1234"],
-        "role":["Admin"]
+        "role":["sachin"]
     })
     users.to_csv(USER_FILE,index=False)
 
